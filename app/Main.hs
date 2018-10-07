@@ -67,7 +67,13 @@ signal _ = [ (x, sin x) | x <- [0.0,0.05..2*pi] ]
 plotItems :: [Item] -> Renderable ()
 plotItems xs = toRenderable $ do
     layoutlr_title .= "Reflow Profile"
-    setColors [ opaque gray, opaque red, opaque green, opaque blue, opaque black ]
+    setColors
+        [ opaque black
+        , opaque red
+        , opaque green
+        , opaque blue
+        , withOpacity gray 0.5
+        ]
     plotLeft (line "set-point" [ [ (time, setPoint) | Item{..} <- xs ] ])
     plotLeft (line "avg-temp" [ [ (time, avgTemp) | Item{..} <- xs ] ])
     plotLeft (line "temp-A" [ [ (time, tempA) | Item{..} <- xs ] ])
