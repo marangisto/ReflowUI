@@ -9,6 +9,8 @@ import Control.Concurrent
 import Control.Monad.IO.Class
 import Control.Monad
 import Text.Read (readMaybe)
+import Data.Either
+import Data.IORef
 
 data Options = Options
     { port :: FilePath
@@ -49,18 +51,23 @@ readItem s
           readState "cool" = Just Cool
           readState _ = Nothing
 
-main :: IO ()
-main = do
-    Options{..} <- cmdArgs def
-    withSerial port defaultSerialSettings { commSpeed = CS115200 } $ \port -> do
-        liftIO $ setCurrentDirectory dir
-        liftIO $ threadDelay 100000
-        forever $ do
-            getSerial port >>= mapM_ print . map readItem . lines . B.unpack
-
 getSerial :: SerialPort -> IO B.ByteString
 getSerial port = loop where
     loop = do
         x <- recv port 256
         if B.null x then return B.empty else B.append x `liftM` loop
+
+main :: IO ()
+main = do
+    Options{..} <- cmdArgs def
+    items <- newIORef []
+    withSerial port defaultSerialSettings { commSpeed = CS115200 } $ \port -> do
+        liftIO $ setCurrentDirectory dir
+        liftIO $ threadDelay 100000
+        forever $ do
+            (xs, ys) <- (partitionEithers . map readItem .  lines . B.unpack) <$> getSerial port
+            unless (null xs) $ mapM_ putStrLn xs
+            unless (null ys) $ do
+                modifyIORef' items (++ys)
+                print =<< (length <$> readIORef items)
 
