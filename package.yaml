@@ -24,10 +24,8 @@ dependencies:
   - bytestring
   - directory
   - process
-  - haskeline
   - cmdargs
   - serialport
-  - monad-loops
 
 library:
   source-dirs: src
