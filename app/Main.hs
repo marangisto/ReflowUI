@@ -23,7 +23,7 @@ data Options = Options
 
 instance CmdArgs.Default Options where def = Options "/dev/ttyACM0" "."
 
-data State = Init | Ramp1 | Soak | Ramp2 | Reflow | Cool deriving (Show)
+data State = Init | Ramp1 | Soak | Ramp2 | Reflow | Cool deriving (Eq, Show)
 
 data Item = Item
     { state     :: State
@@ -72,12 +72,16 @@ plotItems xs = toRenderable $ do
         , opaque red
         , opaque green
         , opaque blue
+        , withOpacity blue 0.5
+        , withOpacity red 0.5
         , withOpacity gray 0.5
         ]
     plotLeft (line "set-point" [ [ (time, setPoint) | Item{..} <- xs ] ])
     plotLeft (line "avg-temp" [ [ (time, avgTemp) | Item{..} <- xs ] ])
     plotLeft (line "temp-A" [ [ (time, tempA) | Item{..} <- xs ] ])
     plotLeft (line "temp-B" [ [ (time, tempB) | Item{..} <- xs ] ])
+    plotLeft (points "soak" [ (time, setPoint) | Item{state = Soak,..} <- xs ])
+    plotLeft (points "reflow" [ (time, setPoint) | Item{state = Reflow,..} <- xs ])
     plotRight (line "power" [ [ (time, power) | Item{..} <- xs ] ])
 
 renderScene :: DrawingArea -> IO Bool
