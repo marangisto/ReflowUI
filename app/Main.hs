@@ -1,9 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
 module Main (main) where
 
+import Graphics.UI.Gtk
+import Graphics.Rendering.Chart.Easy as C
+import Graphics.Rendering.Chart.Backend.Cairo
+import Graphics.Rendering.Chart.Gtk
 import qualified Data.ByteString.Char8 as B
 import System.Directory
-import System.Console.CmdArgs
+import System.Console.CmdArgs as CmdArgs
 import System.Hardware.Serialport
 import Control.Concurrent
 import Control.Monad.IO.Class
@@ -17,7 +21,7 @@ data Options = Options
     , dir  :: FilePath
     } deriving (Show, Data, Typeable)
 
-instance Default Options where def = Options "/dev/ttyACM0" "."
+instance CmdArgs.Default Options where def = Options "/dev/ttyACM0" "."
 
 data State = Init | Ramp1 | Soak | Ramp2 | Reflow | Cool deriving (Show)
 
@@ -57,17 +61,48 @@ getSerial port = loop where
         x <- recv port 256
         if B.null x then return B.empty else B.append x `liftM` loop
 
-main :: IO ()
-main = do
-    Options{..} <- cmdArgs def
+signal :: [Double] -> [(Double, Double)]
+signal _ = [ (x, sin x) | x <- [0.0,0.05..2*pi] ]
+
+plotItems :: [Item] -> Renderable ()
+plotItems xs = toRenderable $ do
+    layoutlr_title .= "Reflow Profile"
+    setColors [ opaque gray, opaque red, opaque green, opaque blue, opaque black ]
+    plotLeft (line "set-point" [ [ (time, setPoint) | Item{..} <- xs ] ])
+    plotLeft (line "avg-temp" [ [ (time, avgTemp) | Item{..} <- xs ] ])
+    plotLeft (line "temp-A" [ [ (time, tempA) | Item{..} <- xs ] ])
+    plotLeft (line "temp-B" [ [ (time, tempB) | Item{..} <- xs ] ])
+    plotRight (line "power" [ [ (time, power) | Item{..} <- xs ] ])
+
+renderScene :: DrawingArea -> IO Bool
+renderScene da = do
+    updateCanvas (plotItems []) da
+
+readController :: FilePath -> DrawingArea -> IO ()
+readController port drawingArea = do
     items <- newIORef []
     withSerial port defaultSerialSettings { commSpeed = CS115200 } $ \port -> do
-        liftIO $ setCurrentDirectory dir
         liftIO $ threadDelay 100000
         forever $ do
             (xs, ys) <- (partitionEithers . map readItem .  lines . B.unpack) <$> getSerial port
             unless (null xs) $ mapM_ putStrLn xs
             unless (null ys) $ do
                 modifyIORef' items (++ys)
+                zs <- readIORef items
+                postGUIAsync $ void $ updateCanvas (plotItems zs) drawingArea
                 print =<< (length <$> readIORef items)
+
+main :: IO ()
+main = do
+    Options{..} <- cmdArgs CmdArgs.def
+    setCurrentDirectory dir
+    initGUI
+    window <- windowNew
+    drawingArea <- drawingAreaNew
+    containerAdd window drawingArea
+    window `onDestroy` mainQuit
+    windowSetDefaultSize window 640 480
+    widgetShowAll window
+    forkIO $ readController port drawingArea
+    mainGUI
 

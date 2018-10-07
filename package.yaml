@@ -26,6 +26,10 @@ dependencies:
   - process
   - cmdargs
   - serialport
+  - gtk
+  - Chart
+  - Chart-cairo
+  - Chart-gtk
 
 library:
   source-dirs: src

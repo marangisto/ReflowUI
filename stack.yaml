@@ -41,6 +41,9 @@ packages:
 # extra-deps: []
 extra-deps:
   - serialport-0.4.7
+  - Chart-1.9
+  - Chart-cairo-1.9
+  - Chart-gtk-1.9
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
