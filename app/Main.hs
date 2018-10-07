@@ -72,17 +72,22 @@ plotItems xs = toRenderable $ do
         , opaque red
         , opaque green
         , opaque blue
-        , withOpacity blue 0.5
-        , withOpacity red 0.5
+        , withOpacity blue 0.2
+        , withOpacity red 0.2
         , withOpacity gray 0.5
         ]
     plotLeft (line "set-point" [ [ (time, setPoint) | Item{..} <- xs ] ])
     plotLeft (line "avg-temp" [ [ (time, avgTemp) | Item{..} <- xs ] ])
     plotLeft (line "temp-A" [ [ (time, tempA) | Item{..} <- xs ] ])
     plotLeft (line "temp-B" [ [ (time, tempB) | Item{..} <- xs ] ])
-    plotLeft (points "soak" [ (time, setPoint) | Item{state = Soak,..} <- xs ])
-    plotLeft (points "reflow" [ (time, setPoint) | Item{state = Reflow,..} <- xs ])
+    plotLeft (fillBetween "soak" [ (time, (0, setPoint)) | Item{state = Soak,..} <- xs ])
+    plotLeft (fillBetween "reflow" [ (time, (0, setPoint)) | Item{state = Reflow,..} <- xs ])
     plotRight (line "power" [ [ (time, power) | Item{..} <- xs ] ])
+    where fillBetween t xs = liftEC $ do
+            color <- takeColor
+            plot_fillbetween_title .= t
+            plot_fillbetween_style .= solidFillStyle color
+            plot_fillbetween_values .= xs
 
 renderScene :: DrawingArea -> IO Bool
 renderScene da = do
